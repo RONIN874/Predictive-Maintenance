@@ -52,7 +52,7 @@ Unplanned machine failures in industrial settings lead to costly downtime and sa
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/predictive-maintenance.git
+git clone https://github.com/RONIN874/predictive-maintenance.git
 cd predictive-maintenance
 
 # Install dependencies
