@@ -19,24 +19,6 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 # =============================================================================
 
 def load_data(path: str) -> pd.DataFrame:
-    """
-    Load, inspect, and return the AI4I 2020 dataset as a DataFrame.
-
-    Steps performed:
-        1. Load CSV from the given path
-        2. Print shape, column info, and null counts
-        3. Print descriptive statistics for numeric columns
-        4. Print target variable (Machine failure) distribution
-
-    Args:
-        path (str): Relative or absolute path to the CSV file.
-
-    Returns:
-        pd.DataFrame: Loaded dataset.
-
-    Raises:
-        FileNotFoundError: If the CSV file does not exist at the given path.
-    """
     abs_path = os.path.abspath(path)
     if not os.path.exists(abs_path):
         raise FileNotFoundError(
@@ -82,48 +64,22 @@ def load_data(path: str) -> pd.DataFrame:
     return df
 
 
-# =============================================================================
+
 # PART 2 — Preprocess
-# =============================================================================
 
 def preprocess(df: pd.DataFrame):
-    """
-    Clean and prepare the raw DataFrame for model training.
-
-    Steps performed:
-        1. Drop non-predictive identifier columns (UDI, Product ID)
-        2. Drop individual failure-type flags to prevent target leakage
-           (TWF, HDF, PWF, OSF, RNF)
-        3. Handle missing values (drop rows; dataset has 0 nulls but defensive)
-        4. Encode categorical column 'Type' with LabelEncoder (H=0, L=1, M=2)
-        5. Select feature columns and define target (y)
-        6. Scale features with StandardScaler
-
-    Args:
-        df (pd.DataFrame): Raw DataFrame returned by load_data().
-
-    Returns:
-        tuple:
-            X_scaled        (np.ndarray)       : Scaled feature matrix
-            y               (pd.Series)        : Binary target (Machine failure)
-            scaler          (StandardScaler)   : Fitted scaler (reuse for inference)
-            le              (LabelEncoder)     : Fitted encoder for 'Type' column
-            feature_columns (list[str])        : Ordered list of feature names
-    """
+   
     df = df.copy()  # do not mutate the original
 
-    # -- Step 1: Drop identifier columns --------------------------------------
-    columns_to_drop = ['UDI', 'Product ID']
+    # -- Step 1: Drop identifier columns 
+    columns_to_drop = ['UDI', 'Product ID' , 'Type']
     df.drop(columns=columns_to_drop, inplace=True)
-    print(f"[Step 1] Dropped identifier columns: {columns_to_drop}")
+    print(f"[Step 1] Dropped columns: {columns_to_drop}")
 
-    # -- Step 2: Drop failure-type flags (target leakage) ----------------------
-    leakage_cols = ['TWF', 'HDF', 'PWF', 'OSF', 'RNF']
-    df.drop(columns=leakage_cols, inplace=True)
-    print(f"[Step 2] Dropped leakage columns:    {leakage_cols}")
-    print(f"         Remaining columns: {list(df.columns)}")
-
-    # -- Step 3: Handle missing values ----------------------------------------
+    # -- Step 2: Drop failure-type flags (target leakage) 
+    target_columns = ['TWF', 'HDF', 'PWF', 'OSF', 'RNF']
+    y = df[target_columns]
+    # -- Step 3: Handle missing values 
     before = len(df)
     df.dropna(inplace=True)
     after = len(df)
@@ -133,15 +89,11 @@ def preprocess(df: pd.DataFrame):
     else:
         print(f"[Step 3] No null rows found. Rows retained: {after:,}")
 
-    # -- Step 4: Encode categorical variable 'Type' ---------------------------
-    le = LabelEncoder()
-    df['Type'] = le.fit_transform(df['Type'])
-    print(f"[Step 4] LabelEncoder applied to 'Type'.")
-    print(f"         Classes: {list(le.classes_)}  ->  {list(le.transform(le.classes_))}")
+   
+   
 
-    # -- Step 5: Feature selection --------------------------------------------
+    # -- Step 4: Feature selection 
     feature_columns = [
-        'Type',
         'Air temperature [K]',
         'Process temperature [K]',
         'Rotational speed [rpm]',
@@ -149,37 +101,27 @@ def preprocess(df: pd.DataFrame):
         'Tool wear [min]'
     ]
     X = df[feature_columns]
-    y = df['Machine failure']
-    print(f"[Step 5] Features selected: {feature_columns}")
+    print(f"[Step 4] Features selected: {feature_columns}")
     print(f"         X shape: {X.shape}  |  y shape: {y.shape}")
-    print(f"         Target distribution:\n{y.value_counts().to_string()}")
 
-    # -- Step 6: Feature scaling ----------------------------------------------
+    # -- Step : Feature scaling 
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
-    print(f"[Step 6] StandardScaler applied.")
-    print(f"         Scaled X mean (should be ~0): {X_scaled.mean(axis=0).round(4)}")
-    print(f"         Scaled X std  (should be ~1): {X_scaled.std(axis=0).round(4)}")
-
-    print(f"\n{'='*60}")
+   
     print("  Preprocessing complete.")
-    print(f"{'='*60}\n")
 
-    return X_scaled, y, scaler, le, feature_columns
+    return X_scaled, y, scaler, feature_columns
 
 
-# =============================================================================
 # Quick test when run directly
-# =============================================================================
 if __name__ == "__main__":
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     csv_path = os.path.join(base_dir, "Dataset", "ai4i2020.csv")
 
     dataframe = load_data(csv_path)
-    X_scaled, y, scaler, le, features = preprocess(dataframe)
+    X_scaled, y, scaler, features = preprocess(dataframe)
 
     print(f"Returned X_scaled shape : {X_scaled.shape}")
     print(f"Returned y shape        : {y.shape}")
     print(f"Scaler type             : {type(scaler).__name__}")
-    print(f"LabelEncoder classes    : {list(le.classes_)}")
     print(f"Feature columns         : {features}")

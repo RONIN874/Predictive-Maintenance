@@ -1,5 +1,3 @@
-
-
 import os
 import sys
 import argparse
@@ -14,31 +12,10 @@ from model_utils import load_model
 # Core prediction function
 # =============================================================================
 
-def predict_failure(model, scaler, le, params):
-    """
-    Predict machine failure for the given parameters.
-
-    Args:
-        model  : Trained sklearn classifier (RandomForestClassifier).
-        scaler : Fitted StandardScaler.
-        le     : Fitted LabelEncoder for the 'Type' column.
-        params : dict with keys:
-                     'Type'                    (str)   — H, L, or M
-                     'Air temperature [K]'     (float)
-                     'Process temperature [K]' (float)
-                     'Rotational speed [rpm]'  (int)
-                     'Torque [Nm]'             (float)
-                     'Tool wear [min]'         (int)
-
-    Returns:
-        int: 0 (No Failure / Safe) or 1 (Failure Likely)
-    """
-    # Encode the 'Type' column
-    type_encoded = le.transform([params['Type']])[0]
-
+def predict_failure(model, scaler, params):
+    
     # Build feature array in the same column order used during training
     features = np.array([[
-        type_encoded,
         params['Air temperature [K]'],
         params['Process temperature [K]'],
         params['Rotational speed [rpm]'],
@@ -49,26 +26,26 @@ def predict_failure(model, scaler, le, params):
     # Scale using the same scaler from training
     features_scaled = scaler.transform(features)
 
-    # Predict
-    prediction = model.predict(features_scaled)[0]
-    return int(prediction)
+    # Predict class and probability
+    prediction = (model.predict(features_scaled)[0])
+    
+    # Get top contributing factors if supported
+    
+    failure_names = ['Tool Wear Failure', 'Heat Dissipation Failure', 
+                     'Power Failure', 'Overstrain Failure', 'Random Failures']
+    active_failure = [failure_names[i] for i, p in enumerate(prediction) if p == 1]
+    return active_failure
 
 
-# =============================================================================
+
 # Interactive input
-# =============================================================================
 
 def get_params_interactive():
     """Prompt the user for machine parameters interactively."""
     print(f"\n{'='*40}")
     print("  Machine Failure Prediction System")
     print(f"{'='*40}\n")
-    print("Enter machine parameters:\n")
 
-    machine_type = input("  Type (H / L / M)            : ").strip().upper()
-    while machine_type not in ('H', 'L', 'M'):
-        print("  [!] Invalid type. Please enter H, L, or M.")
-        machine_type = input("  Type (H / L / M)            : ").strip().upper()
 
     air_temp      = float(input("  Air temperature [K]         : ").strip())
     process_temp  = float(input("  Process temperature [K]     : ").strip())
@@ -77,7 +54,6 @@ def get_params_interactive():
     tool_wear     = int(input("  Tool wear [min]             : ").strip())
 
     return {
-        'Type':                    machine_type,
         'Air temperature [K]':     air_temp,
         'Process temperature [K]': process_temp,
         'Rotational speed [rpm]':  rpm,
@@ -86,43 +62,36 @@ def get_params_interactive():
     }
 
 
-# =============================================================================
 # Display result
-# =============================================================================
 
-def display_result(params, prediction):
-    """Pretty-print the input parameters and prediction result."""
+def display_result(params, active_failures):
     print(f"\n{'='*40}")
-    print("  Machine Failure Prediction System")
+    print("  Multi-Output Failure Prediction")
     print(f"{'='*40}\n")
-
+    
+    # This is what I meant by "print your 5 numeric params here"
     print("Input Parameters:")
-    print(f"  Type               : {params['Type']}")
     print(f"  Air Temperature    : {params['Air temperature [K]']} K")
     print(f"  Process Temperature: {params['Process temperature [K]']} K")
     print(f"  Rotational Speed   : {params['Rotational speed [rpm]']} rpm")
     print(f"  Torque             : {params['Torque [Nm]']} Nm")
     print(f"  Tool Wear          : {params['Tool wear [min]']} min")
-
-    if prediction == 0:
-        print("\n✅ Machine Status: Safe")
-        print("   The machine is operating within normal parameters.")
+    
+    if not active_failures:
+        print("\n✅ Machine Status: Safe (No failures predicted)")
     else:
-        print("\n⚠️  Warning: Machine Failure Likely!")
-        print("   Immediate inspection recommended.")
-
+        print("\n⚠️  WARNING: Potential Failures Detected!")
+        for f in active_failures:
+            print(f"  -> {f}")
     print()
 
-
-# =============================================================================
 # CLI entry point
-# =============================================================================
 
 def main():
     parser = argparse.ArgumentParser(
         description="Predict machine failure using the trained model."
     )
-    parser.add_argument('--type',         type=str,   help="Machine type (H/L/M)")
+    # Removed the --type argument completely
     parser.add_argument('--air-temp',     type=float, help="Air temperature [K]")
     parser.add_argument('--process-temp', type=float, help="Process temperature [K]")
     parser.add_argument('--rpm',          type=int,   help="Rotational speed [rpm]")
@@ -134,16 +103,16 @@ def main():
     base_dir   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     models_dir = os.path.join(base_dir, "models")
 
-    # Step 1 — Load saved artifacts
-    model, scaler, le = load_model(models_dir)
+    # Step 1 — Load saved artifacts (Removed 'le')
+    model, scaler = load_model(models_dir)
 
-    # Step 2 — Get parameters (CLI arguments or interactive)
-    cli_values = [args.type, args.air_temp, args.process_temp,
+    # Step 2 — Get parameters (Removed args.type)
+    cli_values = [args.air_temp, args.process_temp,
                   args.rpm, args.torque, args.tool_wear]
 
     if all(v is not None for v in cli_values):
+        # Removed 'Type' from this dict
         params = {
-            'Type':                    args.type.upper(),
             'Air temperature [K]':     args.air_temp,
             'Process temperature [K]': args.process_temp,
             'Rotational speed [rpm]':  args.rpm,
@@ -154,8 +123,9 @@ def main():
         params = get_params_interactive()
 
     # Steps 3 + 4 — Predict and display
-    prediction = predict_failure(model, scaler, le, params)
-    display_result(params, prediction)
+    # Matched to your updated predict_failure function
+    active_failures = predict_failure(model, scaler, params)
+    display_result(params, active_failures)
 
 
 if __name__ == "__main__":

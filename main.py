@@ -1,5 +1,3 @@
-
-
 import os
 import sys
 import argparse
@@ -20,8 +18,6 @@ DATA_PATH   = os.path.join(PROJECT_ROOT, "data", "ai4i2020.csv")
 OUTPUT_DIR  = os.path.join(PROJECT_ROOT, "outputs")
 MODELS_DIR  = os.path.join(PROJECT_ROOT, "models")
 
-
-
 def cmd_train(_args):
     """Full pipeline: load → preprocess → EDA → train → evaluate → save."""
     print(f"\n{'='*60}")
@@ -38,15 +34,15 @@ def cmd_train(_args):
     plot_failure_analysis(df, OUTPUT_DIR)
 
     # Part 2 — Preprocess
-    X_scaled, y, scaler, le, feature_columns = preprocess(df)
+    X_scaled, y, scaler, feature_columns = preprocess(df)
 
     # Part 4 — Train & evaluate
-    X_train, X_test, y_train, y_test = split_data(X_scaled, y)
+    X_train, X_test, y_train, y_test = split_data(X_scaled,y)
     model = train_model(X_train, y_train)
     evaluate_model(model, X_test, y_test, feature_columns, OUTPUT_DIR)
 
     # Part 5 — Save
-    save_model(model, scaler, le, output_dir=MODELS_DIR)
+    save_model(model, scaler, output_dir=MODELS_DIR)
 
     print(f"\n{'='*60}")
     print("  Training pipeline complete.")
@@ -57,15 +53,14 @@ def cmd_train(_args):
 
 def cmd_predict(args):
     """Load saved model and predict failure for given parameters."""
-    model, scaler, le = load_model(MODELS_DIR)
+    model, scaler= load_model(MODELS_DIR)
 
     # Check if CLI arguments were provided
-    cli_values = [args.type, args.air_temp, args.process_temp,
+    cli_values = [args.air_temp, args.process_temp,
                   args.rpm, args.torque, args.tool_wear]
 
     if all(v is not None for v in cli_values):
         params = {
-            'Type':                    args.type.upper(),
             'Air temperature [K]':     args.air_temp,
             'Process temperature [K]': args.process_temp,
             'Rotational speed [rpm]':  args.rpm,
@@ -75,7 +70,7 @@ def cmd_predict(args):
     else:
         params = get_params_interactive()
 
-    prediction = predict_failure(model, scaler, le, params)
+    prediction = predict_failure(model, scaler, params)
     display_result(params, prediction)
 
 
@@ -107,7 +102,6 @@ def build_parser():
 
     # --- predict ---
     pred_parser = subparsers.add_parser("predict", help="Predict machine failure")
-    pred_parser.add_argument('--type',         type=str,   help="Machine type (H/L/M)")
     pred_parser.add_argument('--air-temp',     type=float, help="Air temperature [K]")
     pred_parser.add_argument('--process-temp', type=float, help="Process temperature [K]")
     pred_parser.add_argument('--rpm',          type=int,   help="Rotational speed [rpm]")
