@@ -232,14 +232,6 @@ The Multi-Output Random Forest classifier predicts all five failure types simult
 
 ![Failure Box Plots](outputs/failure_boxplots.png)
 
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
----
-
 ## 🙏 Acknowledgements
 
 - **Dataset**: [AI4I 2020 Predictive Maintenance Dataset](https://archive.ics.uci.edu/ml/datasets/AI4I+2020+Predictive+Maintenance+Dataset) — UCI Machine Learning Repository
